@@ -14,8 +14,18 @@ export type TransferResult = {
   applied: boolean;
 };
 
+export type TransferFailurePoint =
+  | "after-debit-before-credit";
+
+export type TransferFailureInjector = (
+  point: TransferFailurePoint,
+) => void;
+
 export class AccountRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly failureInjector?: TransferFailureInjector,
+  ) {}
 
   async create(): Promise<Account> {
     const id = randomUUID();
@@ -108,6 +118,9 @@ export class AccountRepository {
           await client.query("ROLLBACK");
           return null;
         }
+
+        this.failureInjector?.("after-debit-before-credit");
+
         await client.query(
           'UPDATE accounts SET balance = balance + $2::numeric WHERE id = $1',
           [destinationId, amount]
