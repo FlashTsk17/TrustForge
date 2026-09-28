@@ -32,6 +32,19 @@ export function createApp(accounts?: AccountRepository) {
       }
     });
 
+    app.get("/transactions/:id", async (request, response) => {
+      try {
+        const transaction = await accounts.findTransaction(request.params.id);
+        if (!transaction) {
+          response.status(404).json({ error: "transaction_not_found" });
+          return;
+        }
+        response.status(200).json(transaction);
+      } catch {
+        response.status(500).json({ error: "transaction_lookup_failed" });
+      }
+    });
+
     app.post("/accounts/:id/deposits", async (request, response) => {
       const amount = request.body?.amount;
       const transactionId = request.body?.transactionId;
@@ -57,11 +70,7 @@ export function createApp(accounts?: AccountRepository) {
 
     app.post("/transfers", async (request, response) => {
       const { sourceAccountId, destinationAccountId, amount, transactionId } = request.body ?? {};
-      if (
-        typeof sourceAccountId !== "string" ||
-        typeof destinationAccountId !== "string" ||
-        sourceAccountId === destinationAccountId
-      ) {
+      if (typeof sourceAccountId !== "string" || typeof destinationAccountId !== "string" || sourceAccountId === destinationAccountId) {
         response.status(400).json({ error: "invalid_transfer_accounts" });
         return;
       }
