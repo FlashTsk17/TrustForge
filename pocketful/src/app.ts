@@ -34,13 +34,32 @@ export function createApp(accounts?: AccountRepository) {
 
     app.post("/accounts/:id/deposits", async (request, response) => {
       const amount = request.body?.amount;
-      if (typeof amount !== "string" || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
+      const transactionId = request.body?.transactionId;
+
+      if (
+        typeof transactionId !== "string" ||
+        transactionId.trim().length === 0 ||
+        transactionId.length > 200
+      ) {
+        response.status(400).json({ error: "invalid_transaction_id" });
+        return;
+      }
+
+      if (
+        typeof amount !== "string" ||
+        !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amount) ||
+        Number(amount) <= 0
+      ) {
         response.status(400).json({ error: "invalid_deposit_amount" });
         return;
       }
 
       try {
-        const account = await accounts.deposit(request.params.id, amount);
+        const account = await accounts.deposit(
+          request.params.id,
+          amount,
+          transactionId
+        );
         if (!account) {
           response.status(404).json({ error: "account_not_found" });
           return;
