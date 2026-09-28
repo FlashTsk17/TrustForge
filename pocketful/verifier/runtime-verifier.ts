@@ -88,7 +88,47 @@ export async function runRuntimeVerification(pool: Pool): Promise<RuntimeVerific
     records.push(evidence("R3", "A07", "Retry does not duplicate the financial effect.", `first.applied=${first?.applied}; retry.applied=${retry?.applied}; source=${sourceState?.balance}; destination=${destinationState?.balance}.`, ["first operation result", "retry operation result", "source final state", "destination final state"], pass ? "PASS" : "FAIL"));
   }
 
+  {
+    const source = await repo.create();
+    const destination = await repo.create();
+    await repo.deposit(source.id, "100.00", randomUUID());
+    const tx = randomUUID();
+    let injectedFailure = false;
+    const checkedRepo = new AccountRepository(pool, (point) => {
+      if (point === "after-debit-before-credit") {
+        injectedFailure = true;
+        throw new Error("simulated_transfer_exception");
+      }
+    });
+
+    try {
+      await checkedRepo.transfer(source.id, destination.id, "40.00", tx);
+    } catch {
+      // Expected controlled failure.
+    }
+
+    const sourceState = await repo.findById(source.id);
+    const destinationState = await repo.findById(destination.id);
+    const transactionState = await repo.findTransaction(tx);
+    const pass =
+      injectedFailure &&
+      sourceState?.balance === "100.00" &&
+      destinationState?.balance === "0.00" &&
+      transactionState === null;
+
+    records.push(
+      evidence(
+        "R4",
+        "A04",
+        "A failure after debit and before credit must leave no partial persistent state.",
+        `injectedFailure=${injectedFailure}; source=${sourceState?.balance}; destination=${destinationState?.balance}; transactionRecord=${transactionState ? "present" : "absent"}.`,
+        ["source final state", "destination final state", "transaction record state"],
+        pass ? "PASS" : "FAIL",
+      ),
+    );
+  }
+
   const allPass = (property: string) => records.filter((item) => item.property_id === property).length > 0 && records.filter((item) => item.property_id === property).every((item) => item.verifier_conclusion === "PASS");
   return { verifier: "TrustForge Runtime Verifier", implementation_revision: revision, generated_at: new Date().toISOString(), records,
-    property_conclusions: { R1: allPass("R1") ? "PASS" : "FAIL", R2: allPass("R2") ? "PASS" : "FAIL", R3: allPass("R3") ? "PASS" : "FAIL", R4: "INCONCLUSIVE", R5: allPass("R5") ? "PASS" : "FAIL", R6: "INCONCLUSIVE", R7: "INCONCLUSIVE" } };
+    property_conclusions: { R1: allPass("R1") ? "PASS" : "FAIL", R2: allPass("R2") ? "PASS" : "FAIL", R3: allPass("R3") ? "PASS" : "FAIL", R4: allPass("R4") ? "PASS" : "FAIL", R5: allPass("R5") ? "PASS" : "FAIL", R6: "INCONCLUSIVE", R7: "INCONCLUSIVE" } };
 }
