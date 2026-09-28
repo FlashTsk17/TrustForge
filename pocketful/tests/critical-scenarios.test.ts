@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import request from "supertest";
 import { Pool } from "pg";
 import { AccountRepository } from "../src/accounts.js";
+import { createApp } from "../src/app.js";
 import { ensureSchema } from "../src/schema.js";
 
 const pool = new Pool({
@@ -43,12 +45,7 @@ describe("TrustForge Pocketful critical scenarios", () => {
     const source = await repo.create();
     const destination = await repo.create();
 
-    const result = await repo.transfer(
-      source.id,
-      destination.id,
-      "1.00",
-      randomUUID(),
-    );
+    const result = await repo.transfer(source.id, destination.id, "1.00", randomUUID());
 
     expect(result).toBeNull();
     expect((await repo.findById(source.id))?.balance).toBe("0.00");
@@ -95,16 +92,27 @@ describe("TrustForge Pocketful critical scenarios", () => {
     expect(await repo.findTransaction(tx)).toBeNull();
   });
 
+  it("A05 unauthorized access: another account cannot mutate the protected account", async () => {
+    const victim = await repo.create();
+    const attacker = await repo.create();
+    const app = createApp(repo);
+
+    const response = await request(app)
+      .post(`/accounts/${victim.id}/deposits`)
+      .set("Authorization", `Bearer ${attacker.accessSecret}`)
+      .send({ amount: "25.00", transactionId: randomUUID() });
+
+    expect(response.status).toBe(401);
+    expect((await repo.findById(victim.id))?.balance).toBe("0.00");
+    expect(await repo.authorize(victim.id, attacker.accessSecret)).toBe(false);
+    expect(await repo.authorize(victim.id, victim.accessSecret)).toBe(true);
+  });
+
   it("A06 boundary values: rejects non-positive deposits", async () => {
     const account = await repo.create();
 
-    await expect(
-      repo.deposit(account.id, "0.00", randomUUID()),
-    ).rejects.toThrow();
-
-    await expect(
-      repo.deposit(account.id, "-1.00", randomUUID()),
-    ).rejects.toThrow();
+    await expect(repo.deposit(account.id, "0.00", randomUUID())).rejects.toThrow();
+    await expect(repo.deposit(account.id, "-1.00", randomUUID())).rejects.toThrow();
 
     expect((await repo.findById(account.id))?.balance).toBe("0.00");
   });
