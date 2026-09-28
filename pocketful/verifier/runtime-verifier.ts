@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
+import request from "supertest";
 import { AccountRepository } from "../src/accounts.js";
+import { createApp } from "../src/app.js";
 
 export type VerifierConclusion = "PASS" | "FAIL" | "INCONCLUSIVE";
 
@@ -30,10 +32,7 @@ export type RuntimeVerificationReport = {
   property_conclusions: Record<string, VerifierConclusion>;
 };
 
-const revision =
-  process.env.GITHUB_SHA ??
-  process.env.TRUSTFORGE_IMPLEMENTATION_REVISION ??
-  "local";
+const revision = process.env.GITHUB_SHA ?? process.env.TRUSTFORGE_IMPLEMENTATION_REVISION ?? "local";
 
 function evidence(
   propertyId: string,
@@ -50,8 +49,7 @@ function evidence(
     property_id: propertyId,
     scenario_id: scenarioId,
     implementation_revision: revision,
-    execution_command_or_method:
-      "Independent runtime verifier executed by Vitest against PostgreSQL.",
+    execution_command_or_method: "Independent runtime verifier executed by Vitest against PostgreSQL.",
     expected_result: expected,
     observed_result: observed,
     evidence_artifacts: artifacts,
@@ -70,29 +68,23 @@ function hashableRecord(record: EvidenceRecord): Omit<EvidenceRecord, "evidence_
 }
 
 function hashEvidence(record: EvidenceRecord): string {
-  return createHash("sha256")
-    .update(JSON.stringify(hashableRecord(record)))
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify(hashableRecord(record))).digest("hex");
 }
 
 export function verifyEvidenceChain(records: EvidenceRecord[]): boolean {
   if (records.length === 0) return false;
-
   let previousHash: string | null = null;
-
   for (const record of records) {
     if (record.previous_evidence_hash !== previousHash) return false;
     if (record.evidence_hash !== hashEvidence(record)) return false;
     previousHash = record.evidence_hash;
   }
-
   return true;
 }
 
-export async function runRuntimeVerification(
-  pool: Pool,
-): Promise<RuntimeVerificationReport> {
+export async function runRuntimeVerification(pool: Pool): Promise<RuntimeVerificationReport> {
   const repo = new AccountRepository(pool);
+  const app = createApp(repo);
   const records: EvidenceRecord[] = [];
 
   {
@@ -102,55 +94,19 @@ export async function runRuntimeVerification(
     await repo.deposit(account.id, "100.00", tx);
     const state = await repo.findById(account.id);
     const pass = state?.balance === "100.00";
-    records.push(
-      evidence(
-        "R3",
-        "A01",
-        "At most one financial effect.",
-        `Final balance is ${state?.balance ?? "missing"} after two identical transaction identities.`,
-        ["account final state", "transaction record"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+    records.push(evidence("R3", "A01", "At most one financial effect.", `Final balance is ${state?.balance ?? "missing"} after two identical transaction identities.`, ["account final state", "transaction record"], pass ? "PASS" : "FAIL"));
   }
 
   {
     const source = await repo.create();
     const destination = await repo.create();
-    const result = await repo.transfer(
-      source.id,
-      destination.id,
-      "1.00",
-      randomUUID(),
-    );
+    const result = await repo.transfer(source.id, destination.id, "1.00", randomUUID());
     const sourceState = await repo.findById(source.id);
     const destinationState = await repo.findById(destination.id);
-    const notApplied = result === null;
-    const pass =
-      notApplied &&
-      sourceState?.balance === "0.00" &&
-      destinationState?.balance === "0.00";
+    const pass = result === null && sourceState?.balance === "0.00" && destinationState?.balance === "0.00";
     const observed = `result=${result === null ? "not applied" : "applied"}; source=${sourceState?.balance}; destination=${destinationState?.balance}.`;
-    records.push(
-      evidence(
-        "R1",
-        "A02",
-        "Insufficient-funds transfer is rejected without changing either balance.",
-        observed,
-        ["source final state", "destination final state", "operation result"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
-    records.push(
-      evidence(
-        "R2",
-        "A02",
-        "Insufficient-funds transfer cannot produce a negative balance.",
-        observed,
-        ["source final state", "destination final state", "operation result"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+    records.push(evidence("R1", "A02", "Insufficient-funds transfer is rejected without changing either balance.", observed, ["source final state", "destination final state", "operation result"], pass ? "PASS" : "FAIL"));
+    records.push(evidence("R2", "A02", "Insufficient-funds transfer cannot produce a negative balance.", observed, ["source final state", "destination final state", "operation result"], pass ? "PASS" : "FAIL"));
   }
 
   {
@@ -166,66 +122,21 @@ export async function runRuntimeVerification(
     const sourceState = await repo.findById(source.id);
     const pass = applied === 1 && sourceState?.balance === "20.00";
     const observed = `applied=${applied}; source=${sourceState?.balance}.`;
-    records.push(
-      evidence(
-        "R2",
-        "A03",
-        "Concurrent spending cannot create an invalid negative balance.",
-        observed,
-        ["concurrent operation results", "source final state"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
-    records.push(
-      evidence(
-        "R5",
-        "A03",
-        "Race conditions cannot violate critical value invariants.",
-        observed,
-        ["concurrent operation results", "source final state"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+    records.push(evidence("R2", "A03", "Concurrent spending cannot create an invalid negative balance.", observed, ["concurrent operation results", "source final state"], pass ? "PASS" : "FAIL"));
+    records.push(evidence("R5", "A03", "Race conditions cannot violate critical value invariants.", observed, ["concurrent operation results", "source final state"], pass ? "PASS" : "FAIL"));
   }
 
   {
     const account = await repo.create();
     let zeroRejected = false;
     let negativeRejected = false;
-    try {
-      await repo.deposit(account.id, "0.00", randomUUID());
-    } catch {
-      zeroRejected = true;
-    }
-    try {
-      await repo.deposit(account.id, "-1.00", randomUUID());
-    } catch {
-      negativeRejected = true;
-    }
+    try { await repo.deposit(account.id, "0.00", randomUUID()); } catch { zeroRejected = true; }
+    try { await repo.deposit(account.id, "-1.00", randomUUID()); } catch { negativeRejected = true; }
     const state = await repo.findById(account.id);
-    const pass =
-      zeroRejected && negativeRejected && state?.balance === "0.00";
+    const pass = zeroRejected && negativeRejected && state?.balance === "0.00";
     const observed = `zeroRejected=${zeroRejected}; negativeRejected=${negativeRejected}; balance=${state?.balance}.`;
-    records.push(
-      evidence(
-        "R1",
-        "A06",
-        "Boundary rejection does not create unexplained value.",
-        observed,
-        ["boundary operation results", "account final state"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
-    records.push(
-      evidence(
-        "R2",
-        "A06",
-        "Invalid boundary inputs do not create an invalid balance.",
-        observed,
-        ["boundary operation results", "account final state"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+    records.push(evidence("R1", "A06", "Boundary rejection does not create unexplained value.", observed, ["boundary operation results", "account final state"], pass ? "PASS" : "FAIL"));
+    records.push(evidence("R2", "A06", "Invalid boundary inputs do not create an invalid balance.", observed, ["boundary operation results", "account final state"], pass ? "PASS" : "FAIL"));
   }
 
   {
@@ -233,40 +144,12 @@ export async function runRuntimeVerification(
     const destination = await repo.create();
     await repo.deposit(source.id, "50.00", randomUUID());
     const tx = randomUUID();
-    const first = await repo.transfer(
-      source.id,
-      destination.id,
-      "30.00",
-      tx,
-    );
-    const retry = await repo.transfer(
-      source.id,
-      destination.id,
-      "30.00",
-      tx,
-    );
+    const first = await repo.transfer(source.id, destination.id, "30.00", tx);
+    const retry = await repo.transfer(source.id, destination.id, "30.00", tx);
     const sourceState = await repo.findById(source.id);
     const destinationState = await repo.findById(destination.id);
-    const pass =
-      first?.applied === true &&
-      retry?.applied === false &&
-      sourceState?.balance === "20.00" &&
-      destinationState?.balance === "30.00";
-    records.push(
-      evidence(
-        "R3",
-        "A07",
-        "Retry does not duplicate the financial effect.",
-        `first.applied=${first?.applied}; retry.applied=${retry?.applied}; source=${sourceState?.balance}; destination=${destinationState?.balance}.`,
-        [
-          "first operation result",
-          "retry operation result",
-          "source final state",
-          "destination final state",
-        ],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+    const pass = first?.applied === true && retry?.applied === false && sourceState?.balance === "20.00" && destinationState?.balance === "30.00";
+    records.push(evidence("R3", "A07", "Retry does not duplicate the financial effect.", `first.applied=${first?.applied}; retry.applied=${retry?.applied}; source=${sourceState?.balance}; destination=${destinationState?.balance}.`, ["first operation result", "retry operation result", "source final state", "destination final state"], pass ? "PASS" : "FAIL"));
   }
 
   {
@@ -281,39 +164,31 @@ export async function runRuntimeVerification(
         throw new Error("simulated_transfer_exception");
       }
     });
-
-    try {
-      await checkedRepo.transfer(source.id, destination.id, "40.00", tx);
-    } catch {
-      // Expected controlled failure.
-    }
-
+    try { await checkedRepo.transfer(source.id, destination.id, "40.00", tx); } catch { /* Expected controlled failure. */ }
     const sourceState = await repo.findById(source.id);
     const destinationState = await repo.findById(destination.id);
     const transactionState = await repo.findTransaction(tx);
-    const pass =
-      injectedFailure &&
-      sourceState?.balance === "100.00" &&
-      destinationState?.balance === "0.00" &&
-      transactionState === null;
+    const pass = injectedFailure && sourceState?.balance === "100.00" && destinationState?.balance === "0.00" && transactionState === null;
+    records.push(evidence("R4", "A04", "A failure after debit and before credit must leave no partial persistent state.", `injectedFailure=${injectedFailure}; source=${sourceState?.balance}; destination=${destinationState?.balance}; transactionRecord=${transactionState ? "present" : "absent"}.`, ["source final state", "destination final state", "transaction record state"], pass ? "PASS" : "FAIL"));
+  }
 
-    records.push(
-      evidence(
-        "R4",
-        "A04",
-        "A failure after debit and before credit must leave no partial persistent state.",
-        `injectedFailure=${injectedFailure}; source=${sourceState?.balance}; destination=${destinationState?.balance}; transactionRecord=${transactionState ? "present" : "absent"}.`,
-        ["source final state", "destination final state", "transaction record state"],
-        pass ? "PASS" : "FAIL",
-      ),
-    );
+  {
+    const victim = await repo.create();
+    const attacker = await repo.create();
+    const response = await request(app)
+      .post(`/accounts/${victim.id}/deposits`)
+      .set("Authorization", `Bearer ${attacker.accessSecret}`)
+      .send({ amount: "25.00", transactionId: randomUUID() });
+    const state = await repo.findById(victim.id);
+    const attackerDenied = !(await repo.authorize(victim.id, attacker.accessSecret));
+    const victimAccepted = await repo.authorize(victim.id, victim.accessSecret);
+    const pass = response.status === 401 && attackerDenied && victimAccepted && state?.balance === "0.00";
+    records.push(evidence("R6", "A05", "A principal without authority cannot mutate protected account state.", `status=${response.status}; attackerDenied=${attackerDenied}; victimAccepted=${victimAccepted}; victimBalance=${state?.balance}.`, ["unauthorized HTTP response", "authorization checks", "victim final state"], pass ? "PASS" : "FAIL"));
   }
 
   const allPass = (property: string) =>
     records.filter((item) => item.property_id === property).length > 0 &&
-    records
-      .filter((item) => item.property_id === property)
-      .every((item) => item.verifier_conclusion === "PASS");
+    records.filter((item) => item.property_id === property).every((item) => item.verifier_conclusion === "PASS");
 
   const propertyConclusions: Record<string, VerifierConclusion> = {
     R1: allPass("R1") ? "PASS" : "FAIL",
@@ -321,7 +196,7 @@ export async function runRuntimeVerification(
     R3: allPass("R3") ? "PASS" : "FAIL",
     R4: allPass("R4") ? "PASS" : "FAIL",
     R5: allPass("R5") ? "PASS" : "FAIL",
-    R6: "INCONCLUSIVE",
+    R6: allPass("R6") ? "PASS" : "FAIL",
     R7: "INCONCLUSIVE",
   };
 
@@ -331,7 +206,6 @@ export async function runRuntimeVerification(
     record.evidence_hash = hashEvidence(record);
     previousHash = record.evidence_hash;
   }
-
   propertyConclusions.R7 = verifyEvidenceChain(records) ? "PASS" : "FAIL";
 
   return {
