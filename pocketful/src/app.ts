@@ -1,6 +1,27 @@
 import express from "express";
 import type { AccountRepository } from "./accounts.js";
 
+function bearerToken(request: express.Request): string | null {
+  const header = request.header("authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length).trim();
+  return token.length > 0 ? token : null;
+}
+
+async function requireAuthorization(
+  accounts: AccountRepository,
+  accountId: string,
+  request: express.Request,
+  response: express.Response,
+): Promise<boolean> {
+  const token = bearerToken(request);
+  if (!token || !(await accounts.authorize(accountId, token))) {
+    response.status(401).json({ error: "unauthorized" });
+    return false;
+  }
+  return true;
+}
+
 export function createApp(accounts?: AccountRepository) {
   const app = express();
   app.use(express.json());
@@ -21,6 +42,7 @@ export function createApp(accounts?: AccountRepository) {
 
     app.get("/accounts/:id", async (request, response) => {
       try {
+        if (!(await requireAuthorization(accounts, request.params.id, request, response))) return;
         const account = await accounts.findById(request.params.id);
         if (!account) {
           response.status(404).json({ error: "account_not_found" });
@@ -39,6 +61,7 @@ export function createApp(accounts?: AccountRepository) {
           response.status(404).json({ error: "transaction_not_found" });
           return;
         }
+        if (!(await requireAuthorization(accounts, transaction.accountId, request, response))) return;
         response.status(200).json(transaction);
       } catch {
         response.status(500).json({ error: "transaction_lookup_failed" });
@@ -46,6 +69,7 @@ export function createApp(accounts?: AccountRepository) {
     });
 
     app.post("/accounts/:id/deposits", async (request, response) => {
+      if (!(await requireAuthorization(accounts, request.params.id, request, response))) return;
       const amount = request.body?.amount;
       const transactionId = request.body?.transactionId;
       if (typeof transactionId !== "string" || transactionId.trim().length === 0 || transactionId.length > 200) {
@@ -74,6 +98,7 @@ export function createApp(accounts?: AccountRepository) {
         response.status(400).json({ error: "invalid_transfer_accounts" });
         return;
       }
+      if (!(await requireAuthorization(accounts, sourceAccountId, request, response))) return;
       if (typeof transactionId !== "string" || transactionId.trim().length === 0 || transactionId.length > 200) {
         response.status(400).json({ error: "invalid_transaction_id" });
         return;
