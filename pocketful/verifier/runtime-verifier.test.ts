@@ -19,7 +19,7 @@ describe("TrustForge independent runtime verifier", () => {
     await pool.end();
   });
 
-  it("produces structured evidence without upgrading unresolved properties", async () => {
+  it("produces structured evidence with runtime-verified atomicity", async () => {
     const report = await runRuntimeVerification(pool);
 
     await mkdir("evidence", { recursive: true });
@@ -33,7 +33,7 @@ describe("TrustForge independent runtime verifier", () => {
     expect(report.property_conclusions.R1).toBe("PASS");
     expect(report.property_conclusions.R2).toBe("PASS");
     expect(report.property_conclusions.R3).toBe("PASS");
-    expect(report.property_conclusions.R4).toBe("INCONCLUSIVE");
+    expect(report.property_conclusions.R4).toBe("PASS");
     expect(report.property_conclusions.R5).toBe("PASS");
     expect(report.property_conclusions.R6).toBe("INCONCLUSIVE");
     expect(report.property_conclusions.R7).toBe("INCONCLUSIVE");
