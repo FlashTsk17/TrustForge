@@ -1,40 +1,39 @@
 # T02 — Account State
 
 ## Task
-Implement account creation and uniquely identifiable account state on top of the approved Pocketful runtime baseline.
+T02 — Implement account creation and uniquely identifiable account state.
 
 ## Traceability
-- Task: T02
 - Components: C01 Account Interface, C03 State Store
-- Property dependencies: R1, R2, R6
-- Risks: K02
-- Dependency: T01
+- Dependencies: T01
+- Risk: K02
+- Related properties: R1, R2, R6
 
 ## Scope
 - Account creation
-- Stable account identifier generation
-- Account state persistence
-- Readable account state for later tasks
-- Minimal adapter-level HTTP surface
+- Stable unique account identifier
+- PostgreSQL-backed account state
+- Read-back of account state
+- Provisional adapter-level HTTP surface
 
-## Important contract boundary
-The official Pocketful interface contract remains D01/BLOCKING. The HTTP routes introduced by this task are provisional internal adapter routes and must not be represented as confirmed Pocketful requirements.
+## Contract boundary
+The official Pocketful interface remains unresolved under D01/BLOCKING. Routes introduced here are provisional TrustForge adapter behavior and are not presented as confirmed external Pocketful requirements.
 
 ## Acceptance criteria
-- T02-C01: creating an account returns a unique identifier.
-- T02-C02: newly created account has a deterministic initial balance of zero.
-- T02-C03: account state is persisted through the selected PostgreSQL state store.
-- T02-C04: account state can be read back by identifier.
-- T02-C05: duplicate identifiers are prevented by the persistence layer.
-- T02-C06: no deposit, transfer, authorization, idempotency, or verification logic is introduced.
+- T02-C01: account creation returns a unique identifier.
+- T02-C02: a new account starts at balance zero.
+- T02-C03: account state is persisted in PostgreSQL.
+- T02-C04: persisted state can be read by identifier.
+- T02-C05: database uniqueness prevents identifier collisions.
+- T02-C06: no deposit, transfer, authorization, idempotency, or verification behavior is implemented here.
 
 ## Evidence required
-- Implementation revision
-- Database schema/migration
-- Account creation request/result
-- Account read-back result
-- Persistence error behavior
-- Actual execution commands/results when an execution environment is available
+- implementation revision
+- schema definition
+- account creation result
+- read-back result
+- persistence error behavior
+- actual execution evidence when an execution environment is available
 
-## Handoff
-T03 — Deposit/Balance may depend on the account state created here.
+## Next handoff
+T03 — Deposit/Balance.
