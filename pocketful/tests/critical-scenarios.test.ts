@@ -74,6 +74,27 @@ describe("TrustForge Pocketful critical scenarios", () => {
     expect(sourceAfter?.balance).toBe("20.00");
   });
 
+  it("A04 partial failure: transaction remains atomic", async () => {
+    const source = await repo.create();
+    const destination = await repo.create();
+    await repo.deposit(source.id, "100.00", randomUUID());
+
+    const tx = randomUUID();
+    const injectedRepo = new AccountRepository(pool, (point) => {
+      if (point === "after-debit-before-credit") {
+        throw new Error("injected_transfer_error");
+      }
+    });
+
+    await expect(
+      injectedRepo.transfer(source.id, destination.id, "40.00", tx),
+    ).rejects.toThrow("injected_transfer_error");
+
+    expect((await repo.findById(source.id))?.balance).toBe("100.00");
+    expect((await repo.findById(destination.id))?.balance).toBe("0.00");
+    expect(await repo.findTransaction(tx)).toBeNull();
+  });
+
   it("A06 boundary values: rejects non-positive deposits", async () => {
     const account = await repo.create();
 
