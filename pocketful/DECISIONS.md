@@ -28,3 +28,30 @@ The stack is intentionally conventional and small for the Pocketful MVP. It supp
 
 ### Decision impact
 This decision unblocks T01 (runtime skeleton) and permits subsequent implementation tasks to depend on a concrete runtime/tooling baseline.
+
+## D02 — Authorization contract v0.1
+
+Status: ACCEPTED
+Scope: Pocketful adapter only.
+Classification: Adapter-local implementation contract; not an official Pocketful API claim.
+
+| Concern | Decision |
+|---|---|
+| Principal | Account owner |
+| Credential | Cryptographically random opaque access secret |
+| Persistence | SHA-256 hash only |
+| Transport | HTTP Authorization Bearer header |
+| Account scope | One secret authorizes one account |
+| Transfer authority | Source account owner |
+| Transaction inspection | Owner of the transaction's recorded account |
+| Failure behavior | HTTP 401 before protected mutation |
+| Secret exposure | Clear secret returned at account creation only |
+
+### R6 acceptance
+A principal without authority cannot mutate protected state, and the protected state remains unchanged after the denied operation.
+
+### Rationale
+The adapter needs a concrete authority boundary to make R6 executable and independently verifiable. An opaque per-account bearer secret is intentionally smaller than a full identity/session system and avoids inventing an unsupported external identity provider or OAuth contract.
+
+### Security boundary
+This decision is sufficient for the tested adapter authorization invariant. It is not a production identity architecture or a universal security guarantee.
