@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { ensureSchema } from "../src/schema.js";
-import { runRuntimeVerification } from "./runtime-verifier.js";
+import { runRuntimeVerification, verifyEvidenceChain } from "./runtime-verifier.js";
 
 const pool = new Pool({
   connectionString:
@@ -36,7 +36,12 @@ describe("TrustForge independent runtime verifier", () => {
     expect(report.property_conclusions.R4).toBe("PASS");
     expect(report.property_conclusions.R5).toBe("PASS");
     expect(report.property_conclusions.R6).toBe("INCONCLUSIVE");
-    expect(report.property_conclusions.R7).toBe("INCONCLUSIVE");
+    expect(report.property_conclusions.R7).toBe("PASS");
+    expect(verifyEvidenceChain(report.records)).toBe(true);
+
+    const tampered = report.records.map((item) => ({ ...item }));
+    tampered[0].observed_result = `${tampered[0].observed_result} [tampered]`;
+    expect(verifyEvidenceChain(tampered)).toBe(false);
 
     expect(
       report.records.every(
@@ -50,6 +55,7 @@ describe("TrustForge independent runtime verifier", () => {
           item.expected_result &&
           item.observed_result &&
           item.evidence_artifacts.length > 0 &&
+          item.evidence_hash.length === 64 &&
           ["PASS", "FAIL", "INCONCLUSIVE"].includes(item.verifier_conclusion),
       ),
     ).toBe(true);
