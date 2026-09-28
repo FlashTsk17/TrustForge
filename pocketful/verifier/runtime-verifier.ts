@@ -37,6 +37,8 @@ function evidence(propertyId: string, scenarioId: string, expected: string, obse
     execution_command_or_method: "Independent runtime verifier executed by Vitest against PostgreSQL.",
     expected_result: expected, observed_result: observed, evidence_artifacts: artifacts,
     verifier_conclusion: conclusion, limitations, repair_reference: null, re_verification_reference: null,
+    previous_evidence_hash: null,
+    evidence_hash: "",
   };
 }
 
