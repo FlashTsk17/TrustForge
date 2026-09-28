@@ -39,6 +39,12 @@ export class AccountRepository {
   }
 
   async deposit(id: string, amount: string, transactionId: string): Promise<Account | null> {
+    if (!/^(?:0|[1-9]\\d*)(?:\\.\\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
+      throw new Error("invalid_deposit_amount");
+    }
+    if (transactionId.trim().length === 0 || transactionId.length > 200) {
+      throw new Error("invalid_transaction_id");
+    }
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -73,6 +79,12 @@ export class AccountRepository {
 
   async transfer(sourceId: string, destinationId: string, amount: string, transactionId: string): Promise<TransferResult | null> {
     if (sourceId === destinationId) return null;
+    if (!/^(?:0|[1-9]\\d*)(?:\\.\\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
+      throw new Error("invalid_transfer_amount");
+    }
+    if (transactionId.trim().length === 0 || transactionId.length > 200) {
+      throw new Error("invalid_transaction_id");
+    }
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
