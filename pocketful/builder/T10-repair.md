@@ -33,7 +33,9 @@ If A04 produces FAIL evidence:
 6. record the original failure and re-verification separately.
 
 ## Current status
-IMPLEMENTED — CI runtime validation pending.
+VALIDATED — CI runtime validation completed successfully.
+
+GitHub Actions Run `36492738341` on commit `686c75c5c7462900958e4ac56800859f0848fe5e` completed successfully. The independent verifier recorded A04/R4 as `PASS`.
 
 ## Related commits
 - `28d1bca2a3580cce794931a53565ea196024a29e` — controlled transfer failure seam
