@@ -1,6 +1,6 @@
 # T06 — Authorization
 
-Status: IMPLEMENTED — runtime verification pending CI
+Status: IMPLEMENTED — awaiting independent CI verification
 
 ## Scope
 T06 closes D02 for the Pocketful adapter by defining an adapter-local authorization contract. This is a TrustForge implementation decision, not a claim about an official Pocketful authentication contract.
@@ -26,9 +26,9 @@ The independent runtime verifier creates a victim and attacker account, attempts
 This mechanism is intentionally minimal for the adapter. It is not presented as a full production identity system, session system, role model, OAuth flow, or universal security guarantee.
 
 ## Validation
-Required CI evidence:
+The acceptance gate is the GitHub Actions runtime verification workflow:
 - npm install
 - npm run build
 - npm test
 - independent verifier A05/R6 PASS
-- evidence-chain R7 remains valid after adding the R6 record
+- evidence-chain R7 PASS
