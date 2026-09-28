@@ -3,6 +3,7 @@ name: TrustForge Runtime Verification
 on:
   push:
     branches: ["main"]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -40,4 +41,3 @@ jobs:
         with:
           name: trustforge-runtime-evidence
           path: pocketful/evidence/runtime-verification.json
-      # T06/R6 gate: the independent verifier must execute in the same CI run.
