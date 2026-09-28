@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 
 export async function ensureSchema(pool: Pool) {
+  await pool.query("SELECT pg_advisory_xact_lock(734251)");
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
       id UUID PRIMARY KEY,
