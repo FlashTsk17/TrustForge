@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import { recordTransaction } from "./transactions.js";
+import { findTransaction, recordTransaction, type TransactionRecord } from "./transactions.js";
 
 export type Account = {
   id: string;
@@ -32,6 +32,10 @@ export class AccountRepository {
       [id]
     );
     return result.rows[0] ?? null;
+  }
+
+  async findTransaction(id: string): Promise<TransactionRecord | null> {
+    return findTransaction(this.pool, id);
   }
 
   async deposit(id: string, amount: string, transactionId: string): Promise<Account | null> {
@@ -82,7 +86,6 @@ export class AccountRepository {
         await client.query("ROLLBACK");
         return null;
       }
-
       const recorded = await recordTransaction(client, transactionId, sourceId, "transfer", amount);
       if (recorded) {
         const debit = await client.query(
@@ -98,7 +101,6 @@ export class AccountRepository {
           [destinationId, amount]
         );
       }
-
       const states = await client.query<Account>(
         'SELECT id, balance::text, created_at AS "createdAt" FROM accounts WHERE id IN ($1, $2)',
         [sourceId, destinationId]
