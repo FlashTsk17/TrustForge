@@ -9,8 +9,12 @@ export async function ensureSchema(pool: Pool) {
       CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY,
         balance NUMERIC(20, 2) NOT NULL DEFAULT 0,
+        owner_token_hash TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE accounts
+        ADD COLUMN IF NOT EXISTS owner_token_hash TEXT;
 
       CREATE TABLE IF NOT EXISTS transactions (
         id TEXT PRIMARY KEY,
