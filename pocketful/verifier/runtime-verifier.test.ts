@@ -19,15 +19,11 @@ describe("TrustForge independent runtime verifier", () => {
     await pool.end();
   });
 
-  it("produces structured evidence with runtime-verified atomicity", async () => {
+  it("produces structured evidence with runtime-verified authorization and atomicity", async () => {
     const report = await runRuntimeVerification(pool);
 
     await mkdir("evidence", { recursive: true });
-    await writeFile(
-      "evidence/runtime-verification.json",
-      JSON.stringify(report, null, 2),
-      "utf8",
-    );
+    await writeFile("evidence/runtime-verification.json", JSON.stringify(report, null, 2), "utf8");
 
     expect(report.records.length).toBeGreaterThan(0);
     expect(report.property_conclusions.R1).toBe("PASS");
@@ -35,7 +31,7 @@ describe("TrustForge independent runtime verifier", () => {
     expect(report.property_conclusions.R3).toBe("PASS");
     expect(report.property_conclusions.R4).toBe("PASS");
     expect(report.property_conclusions.R5).toBe("PASS");
-    expect(report.property_conclusions.R6).toBe("INCONCLUSIVE");
+    expect(report.property_conclusions.R6).toBe("PASS");
     expect(report.property_conclusions.R7).toBe("PASS");
     expect(verifyEvidenceChain(report.records)).toBe(true);
 
