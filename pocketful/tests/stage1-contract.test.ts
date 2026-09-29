@@ -32,14 +32,20 @@ describe("T12 official Stage 1 contract",()=>{
   it("creates pending requests for every non-caller split participant with exact rounding",async()=>{
     const app=createStage1App(); await reset(app);
     const ada=await login(app,"ada@example.com");
+    await request(app).post("/_test/reset").send({
+      currency:"EUR",minor_units:2,
+      users:[
+        {id:"u_ada",email:"ada@example.com",password:"correct horse",display_name:"Ada",handle:"ada",balance:10000},
+        {id:"u_bob",email:"bob@example.com",password:"correct horse",display_name:"Bob",handle:"bob",balance:2500},
+        {id:"u_cy",email:"cy@example.com",password:"correct horse",display_name:"Cy",handle:"cy",balance:0}
+      ],payments:[],requests:[]
+    }).expect(204);
     const r=await request(app).post("/splits").set("Authorization","Bearer "+ada).set("Idempotency-Key","split-1")
-      .send({amount:5,participant_handles:["ada","bob","ada2"],note:"meal"});
-    expect([404,201]).toContain(r.status);
-    if(r.status===201){
-      expect(r.body.shares).toEqual([
-        {handle:"ada",amount:2},{handle:"bob",amount:2},{handle:"ada2",amount:1}
-      ]);
-    }
+      .send({amount:5,participant_handles:["ada","bob","cy"],note:"meal"}).expect(201);
+    expect(r.body.shares).toEqual([
+      {handle:"ada",amount:2},{handle:"bob",amount:2},{handle:"cy",amount:1}
+    ]);
+    expect(r.body.requests).toHaveLength(2);
   });
 
   it("allows a request above the payer balance and rejects only the later payment",async()=>{
@@ -59,10 +65,10 @@ describe("T12 official Stage 1 contract",()=>{
     const ada=await login(app,"ada@example.com");
     await request(app).post("/_test/import").send({
       track:"pocketful",format_version:1,
-      state:{currency:"EUR",minor_units:2,users:[],payments:[],requests:[],splits:[],idempotency:[],settlement_operator_ids:[]}
-    }).expect(204);
-    const empty=await request(app).get("/me").set("Authorization","Bearer "+ada).expect(401);
-    expect(empty.body.error.code).toBe("unauthenticated");
+      state:{currency:"EUR",minor_units:2,users:[],payments:[],requests:[],splits:"invalid",idempotency:[],settlement_operator_ids:[]}
+    }).expect(422);
+    await request(app).get("/me").set("Authorization","Bearer "+ada).expect(200)
+      .then(r=>expect(r.body.balance).toBe(10000));
   });
 });
 
