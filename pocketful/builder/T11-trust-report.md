@@ -3,7 +3,7 @@
 ## 1. Scope
 Pocketful adapter baseline for TrustForge, limited to the currently executable TrustForge adapter surface and the scenarios exercised by the independent runtime verifier.
 
-This report records tested behavior; it does not certify universal correctness, security, or every possible failure mode.
+This report records tested behavior; it does not certify universal correctness, security, every possible failure mode, or conformance to the official Pocketful Stage 1 contract.
 
 ## 2. Implementation revision
 Latest runtime-verified revision:
@@ -74,14 +74,16 @@ Required final gate:
 - independent A05/R6: PASS
 - R7 chain after A05: PASS
 
-## 8. Limitations
-- D01 official Pocketful interface contract remains unresolved.
-- D04 final transaction identity semantics remain unresolved for external-contract alignment.
+## 8. Contract boundary and limitations
+- D01 is now RESOLVED against the official Pocketful Stage 1 specification.
+- D04 is now RESOLVED against the official idempotency semantics.
+- The current runtime evidence predates full migration to that official external contract.
+- Therefore R1–R7 PASS above describe the exercised provisional TrustForge adapter surface, not a claim that the current repository passes the official Stage 1 conformance suite.
 - D05 controlled failure injection remains adapter-specific.
 - The authorization mechanism is minimal and does not establish universal security.
 - R6 is now supported by fresh independent runtime evidence from CI run #45.
 
 ## 9. Conclusion
-**Trust state: VERIFIED FOR EXERCISED CRITICAL SCENARIOS — R1–R7 all PASS.**
+**Trust state: INTERNAL BASELINE VERIFIED; OFFICIAL STAGE 1 CONFORMANCE PENDING.**
 
-R1–R7 have independent runtime evidence for the scenarios currently exercised by TrustForge. This is not a claim of universal correctness or security.
+The existing evidence establishes an independently verified baseline for the provisional adapter behavior. D01 and D04 are now resolved from the official specification, and T12 is the next build milestone to migrate the implementation and re-run verification against that contract.
