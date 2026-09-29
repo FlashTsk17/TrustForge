@@ -107,16 +107,18 @@ The Verifier independently evaluates each R1–R7 using the acceptance matrix an
 
 ## J. Open Decisions
 ### D01 — Pocketful interface contract
-Status: BLOCKING. Exact external interface remains unresolved.
+Status: **RESOLVED — official Stage 1 specification confirmed.**
+The adapter must conform to the published Pocketful Stage 1 HTTP contract, including authentication, payments, requests, splits, activity, settlements, reset/export/import, exact minor-unit arithmetic, and the published error contract.
+
+### D04 — Transaction identity semantics
+Status: **RESOLVED — official idempotency semantics confirmed.**
+External idempotency is defined by authenticated user + HTTP method + path + parsed JSON body, keyed by the `Idempotency-Key` header. The old `transactionId` mechanism is provisional and cannot remain the public contract.
 
 ### D02 — Authentication/authorization contract
 Status: RESOLVED for the TrustForge Pocketful adapter. Adapter-local contract accepted in pocketful/DECISIONS.md and implemented in T06. This is not presented as an official Pocketful identity contract.
 
 ### D03 — Persistence/runtime
 Status: RESOLVED for adapter implementation. Node.js/TypeScript/Express/PostgreSQL/Docker/npm/Vitest accepted in pocketful/DECISIONS.md.
-
-### D04 — Transaction identity semantics
-Status: BLOCKING for final R3 external-contract alignment. Current implementation uses a client-supplied logical transaction identifier as a provisional adapter contract.
 
 ### D05 — Failure injection
 Status: MATERIAL. Current controlled failure seam is sufficient for the exercised A04 proof but remains adapter-specific.
@@ -131,4 +133,4 @@ Status: MATERIAL. Current controlled failure seam is sufficient for the exercise
 - D02 is resolved for the adapter without being misrepresented as an external Pocketful fact: PASS.
 - Verifier independence is explicit: PASS.
 
-**Architecture Package v0.2 status: READY FOR CONTINUED BUILD AND INDEPENDENT VERIFICATION.**
+**Architecture Package v0.2 status: D01/D04 resolved; implementation conformance work is now the next build milestone.**
