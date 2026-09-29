@@ -28,4 +28,18 @@ Runtime validation remains pending:
 - execute identical transaction ID twice and compare balance/effects.
 
 ## Status
-PARTIALLY_IMPLEMENTED until runtime execution produces evidence.
+The provisional transaction-ID implementation is superseded as the public contract by D04.
+
+## External contract alignment
+D04 is now resolved against the official Pocketful Stage 1 specification. R3 must use `Idempotency-Key` semantics:
+- scoped to authenticated user;
+- same method + path + parsed JSON body;
+- exact replay returns the original response with HTTP 200;
+- same key/different body returns 409 `idempotency_key_reuse`;
+- failed 4xx requests do not consume the key;
+- concurrent identical first uses produce one 201 and remaining 200 responses.
+
+The current repository implementation is **not yet Stage 1-conformant** and must be migrated from `transactionId` to this contract before R3 can be called externally verified.
+
+## Status
+DECISION RESOLVED; IMPLEMENTATION MIGRATION PENDING.
