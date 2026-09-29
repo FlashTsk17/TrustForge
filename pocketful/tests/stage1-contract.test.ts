@@ -46,7 +46,20 @@ describe("T12 official Stage 1 contract",()=>{
       {handle:"ada",amount:2},{handle:"bob",amount:2},{handle:"cy",amount:1}
     ]);
     expect(r.body.requests).toHaveLength(2);
+  
+  it("serializes concurrent identical idempotent writes to one effect",async()=>{
+    const app=createStage1App(); await reset(app);
+    const ada=await login(app,"ada@example.com");
+    const calls=Array.from({length:10},()=>request(app).post("/payments")
+      .set("Authorization","Bearer "+ada).set("Idempotency-Key","concurrent-1")
+      .send({to_handle:"bob",amount:100}));
+    const responses=await Promise.all(calls);
+    expect(responses.filter(r=>r.status===201)).toHaveLength(1);
+    expect(responses.filter(r=>r.status===200)).toHaveLength(9);
+    const balances=await request(app).get("/me").set("Authorization","Bearer "+ada).expect(200);
+    expect(balances.body.balance).toBe(9900);
   });
+});
 
   it("allows a request above the payer balance and rejects only the later payment",async()=>{
     const app=createStage1App(); await reset(app);
