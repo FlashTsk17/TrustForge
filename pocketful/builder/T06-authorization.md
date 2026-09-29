@@ -1,6 +1,6 @@
 # T06 — Authorization
 
-Status: IMPLEMENTED — runtime verification pending CI
+Status: **VALIDATED — independent runtime verification completed successfully**
 
 ## Scope
 T06 closes D02 for the Pocketful adapter by defining an adapter-local authorization contract. This is a TrustForge implementation decision, not a claim about an official Pocketful authentication contract.
@@ -32,3 +32,7 @@ Required CI evidence:
 - npm test
 - independent verifier A05/R6 PASS
 - evidence-chain R7 remains valid after adding the R6 record
+
+## Latest validation record
+
+See `pocketful/builder/T06-verification-record.md` for the immutable CI evidence reference.
