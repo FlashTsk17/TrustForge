@@ -1,17 +1,9 @@
-import { Pool } from "pg";
-import { createApp } from "./app.js";
-import { AccountRepository } from "./accounts.js";
-import { ensureSchema } from "./schema.js";
+import { createStage1App } from "./stage1.js";
 
-const port = Number(process.env.PORT ?? 3000);
-const databaseUrl = process.env.DATABASE_URL ?? "postgresql://trustforge:trustforge@localhost:5432/trustforge";
-const pool = new Pool({ connectionString: databaseUrl });
+const port = Number(process.env.PORT ?? 8080);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
 
-await ensureSchema(pool);
-
-const accounts = new AccountRepository(pool);
-const app = createApp(accounts);
-
-app.listen(port, () => {
-  console.log(`Pocketful adapter listening on port ${port}`);
+const app = createStage1App();
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Pocketful Stage 1 listening on 0.0.0.0:${port}`);
 });
