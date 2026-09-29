@@ -6,12 +6,13 @@ Pocketful adapter baseline for TrustForge, limited to the currently executable T
 This report records tested behavior; it does not certify universal correctness, security, or every possible failure mode.
 
 ## 2. Implementation revision
-Latest runtime-verified revision before T06:
-- Commit: 0c1786b9871e5528c87b665666da8c0223c18fb3
+Latest runtime-verified revision:
+- Commit: 31c4395eb4446c097869344291f31f0b846f3462
 - Runtime: Node.js 22 + PostgreSQL 16
+- CI run: #45 (`36496965553`)
 - CI conclusion: SUCCESS
-
-T06 authorization implementation is committed after that verified baseline. A fresh independent CI run is required before R6 is upgraded.
+- Evidence artifact: `trustforge-runtime-evidence` (`11003701657`)
+- Artifact digest: `sha256:5b3ea43228f7b974629b3823c8bcebdc079a3a7dabb597ac7ea7e7bc7efa6843`
 
 ## 3. Requirements and critical properties
 | Property | Current conclusion | Verified scenarios | Boundary |
@@ -21,7 +22,7 @@ T06 authorization implementation is committed after that verified baseline. A fr
 | R3 Idempotency | PASS | A01, A07 | Tested transaction-identity cases |
 | R4 Atomicity | PASS | A03, A04, A07 | Tested concurrency and controlled failure |
 | R5 Concurrency safety | PASS | A03 | Tested concurrent spending case |
-| R6 Authorization | PENDING CI | A05 | D02 resolved; independent runtime execution pending |
+| R6 Authorization | PASS | A05 | Tested adapter-local authorization scenario |
 | R7 Evidence integrity | PASS | Evidence-chain audit | Tamper-evident chain independently checked |
 
 ## 4. T06 / D02 closure
@@ -45,7 +46,7 @@ This is an adapter-local TrustForge decision and is not presented as an official
 | A02 Insufficient funds | R1, R2 | PASS |
 | A03 Concurrent spending | R2, R4, R5 | PASS |
 | A04 Partial failure | R4 | PASS |
-| A05 Unauthorized access | R6 | PENDING CI |
+| A05 Unauthorized access | R6 | PASS |
 | A06 Boundary values | R1, R2 | PASS |
 | A07 Ambiguous-result retry | R3, R4 | PASS |
 
@@ -67,20 +68,20 @@ T06 implementation files:
 - pocketful/DECISIONS.md
 
 Required final gate:
-- npm install: pending CI
-- npm run build: pending CI
-- npm test: pending CI
-- independent A05/R6: pending CI
-- R7 chain after A05: pending CI
+- npm install: PASS (CI run #45)
+- npm run build: PASS (CI run #45)
+- npm test: PASS (CI run #45)
+- independent A05/R6: PASS
+- R7 chain after A05: PASS
 
 ## 8. Limitations
 - D01 official Pocketful interface contract remains unresolved.
 - D04 final transaction identity semantics remain unresolved for external-contract alignment.
 - D05 controlled failure injection remains adapter-specific.
 - The authorization mechanism is minimal and does not establish universal security.
-- R6 must not be reported PASS until the fresh runtime verifier execution succeeds.
+- R6 is now supported by fresh independent runtime evidence from CI run #45.
 
 ## 9. Conclusion
-**Trust state: PARTIALLY VERIFIED — T06 implementation complete, R6 awaiting independent runtime evidence.**
+**Trust state: VERIFIED FOR EXERCISED CRITICAL SCENARIOS — R1–R7 all PASS.**
 
-R1–R5 and R7 retain their previously validated conclusions. R6 is deliberately not upgraded until CI provides executable evidence for A05 on the authorization implementation revision.
+R1–R7 have independent runtime evidence for the scenarios currently exercised by TrustForge. This is not a claim of universal correctness or security.
