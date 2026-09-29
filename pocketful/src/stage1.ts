@@ -60,6 +60,56 @@ function fixtureState(): State {
   return {currency:"EUR",minor_units:2,users:[],payments:[],requests:[],splits:[],idempotency:[],settlement_operator_ids:[]};
 }
 
+function validateImportedState(input:any): input is State {
+  if (!input || typeof input !== "object" || typeof input.currency !== "string" ||
+      ![0,2,3].includes(input.minor_units) || !Array.isArray(input.users) ||
+      !Array.isArray(input.payments) || !Array.isArray(input.requests) ||
+      !Array.isArray(input.splits) || !Array.isArray(input.idempotency) ||
+      !Array.isArray(input.settlement_operator_ids)) return false;
+  const users=input.users as any[];
+  const ids=new Set<string>(), handles=new Set<string>(), emails=new Set<string>();
+  for(const u of users){
+    if(!u || !validId(u.id) || typeof u.email!=="string" || typeof u.password_hash!=="string" ||
+       typeof u.display_name!=="string" || typeof u.handle!=="string" ||
+       !/^[a-z0-9_]{1,20}$/.test(u.handle) || !Number.isSafeInteger(u.balance) || u.balance<0 ||
+       !Array.isArray(u.token_hashes) || u.token_hashes.some((x:any)=>typeof x!=="string") ||
+       ids.has(u.id) || handles.has(u.handle) || emails.has(u.email)) return false;
+    ids.add(u.id); handles.add(u.handle); emails.add(u.email);
+  }
+  const paymentIds=new Set<string>();
+  for(const p of input.payments as any[]){
+    if(!p || !validId(p.id) || paymentIds.has(p.id) || !ids.has(p.from_user_id) || !ids.has(p.to_user_id) ||
+       p.from_user_id===p.to_user_id || !validAmount(p.amount) || typeof p.note!=="string" ||
+       !["public","private"].includes(p.visibility) || (p.request_id!==null && p.request_id!==undefined && typeof p.request_id!=="string") ||
+       (p.settlement_id!==null && p.settlement_id!==undefined && typeof p.settlement_id!=="string") ||
+       typeof p.created_at!=="string") return false;
+    paymentIds.add(p.id);
+  }
+  const requestIds=new Set<string>();
+  for(const r of input.requests as any[]){
+    if(!r || !validId(r.id) || requestIds.has(r.id) || !ids.has(r.requester_id) || !ids.has(r.payer_id) ||
+       r.requester_id===r.payer_id || !validAmount(r.amount) || typeof r.note!=="string" ||
+       !["pending","paid","declined","cancelled"].includes(r.status) ||
+       (r.payment_id!==null && r.payment_id!==undefined && typeof r.payment_id!=="string") ||
+       typeof r.created_at!=="string") return false;
+    requestIds.add(r.id);
+  }
+  for(const s of input.splits as any[]){
+    if(!s || !validId(s.id) || !validAmount(s.amount) || typeof s.note!=="string" ||
+       !Array.isArray(s.shares) || !Array.isArray(s.request_ids) || typeof s.created_at!=="string") return false;
+    if(s.shares.some((x:any)=>!x || typeof x.handle!=="string" || !handles.has(x.handle) ||
+       !Number.isSafeInteger(x.amount) || x.amount<0) || s.request_ids.some((x:any)=>typeof x!=="string")) return false;
+    if(s.shares.reduce((sum:number,x:any)=>sum+x.amount,0)!==s.amount) return false;
+  }
+  for(const r of input.idempotency as any[]){
+    if(!r || typeof r.user_id!=="string" || !ids.has(r.user_id) || typeof r.key!=="string" ||
+       r.key.length<1 || r.key.length>255 || typeof r.method!=="string" || typeof r.path!=="string" ||
+       typeof r.fingerprint!=="string" || !Number.isInteger(r.status) || r.status!==201) return false;
+  }
+  if((input.settlement_operator_ids as any[]).some((x:any)=>!ids.has(x))) return false;
+  return true;
+}
+
 function validateFixture(input:any): {ok:true; state:State}|{ok:false} {
   if (!input || typeof input !== "object" || typeof input.currency !== "string" ||
       ![0,2,3].includes(input.minor_units) || !Array.isArray(input.users) ||
@@ -161,8 +211,7 @@ export function createStage1App(initial:State = fixtureState()) {
     if(!req.body || req.body.track!=="pocketful" || req.body.format_version!==1 || !req.body.state)
       return malformed(res,"validation_failed","Invalid export",422);
     const s=req.body.state;
-    if(typeof s!=="object" || !Array.isArray(s.users) || !Array.isArray(s.payments) || !Array.isArray(s.requests) ||
-       typeof s.currency!=="string" || ![0,2,3].includes(s.minor_units)) return malformed(res,"validation_failed","Invalid state",422);
+    if(!validateImportedState(s)) return malformed(res,"validation_failed","Invalid state",422);
     state=structuredClone(s);
     return res.status(204).send();
   });
@@ -207,6 +256,7 @@ export function createStage1App(initial:State = fixtureState()) {
     const to=findUser(to_handle); if(!to)return malformed(res,"not_found","Recipient not found",404);
     if(to.id===u.id)return malformed(res,"self_payment","Cannot pay yourself",422);
     if(u.balance<amount)return malformed(res,"insufficient_funds","Insufficient funds",409);
+    if(to.balance>Number.MAX_SAFE_INTEGER-amount)return malformed(res,"validation_failed","Balance range exceeded",422);
     u.balance-=amount; to.balance+=amount;
     const p:Payment={id:id("p"),from_user_id:u.id,to_user_id:to.id,amount,note,visibility:vis as any,request_id:null,settlement_id:null,created_at:now()};
     state.payments.push(p); const body=paymentView(p); storeIdem(req,u,201,body); return reply(res,201,body);
@@ -239,6 +289,7 @@ export function createStage1App(initial:State = fixtureState()) {
     if(r.status!=="pending")return malformed(res,"request_not_pending","Request is not pending",409);
     if(u.balance<r.amount)return malformed(res,"insufficient_funds","Insufficient funds",409);
     const requester=state.users.find(x=>x.id===r.requester_id)!;
+    if(requester.balance>Number.MAX_SAFE_INTEGER-r.amount)return malformed(res,"validation_failed","Balance range exceeded",422);
     u.balance-=r.amount; requester.balance+=r.amount;
     const p:Payment={id:id("p"),from_user_id:u.id,to_user_id:requester.id,amount:r.amount,note:r.note,visibility:vis as any,request_id:r.id,settlement_id:null,created_at:now()};
     state.payments.push(p); r.status="paid"; r.payment_id=p.id;
@@ -335,7 +386,11 @@ export function createStage1App(initial:State = fixtureState()) {
       planned.push({from,to,amount:t.amount,note,visibility:vis as any});
       deltas.set(from.id,(deltas.get(from.id)||0)-t.amount); deltas.set(to.id,(deltas.get(to.id)||0)+t.amount);
     }
-    for(const [uid,delta] of deltas)if(state.users.find(x=>x.id===uid)!.balance+delta<0)return malformed(res,"insufficient_funds","Insufficient collective funds",409);
+    for(const [uid,delta] of deltas){
+      const balance=state.users.find(x=>x.id===uid)!.balance;
+      if(balance+delta<0)return malformed(res,"insufficient_funds","Insufficient collective funds",409);
+      if(balance+delta>Number.MAX_SAFE_INTEGER)return malformed(res,"validation_failed","Balance range exceeded",422);
+    }
     const committed=now(), settlementId=id("st"), payments:Payment[]=[];
     for(const x of planned){x.from.balance-=x.amount;x.to.balance+=x.amount;const p:Payment={id:id("p"),from_user_id:x.from.id,to_user_id:x.to.id,amount:x.amount,note:x.note,visibility:x.visibility,request_id:null,settlement_id:settlementId,created_at:committed};state.payments.push(p);payments.push(p);}
     const body={settlement_id:settlementId,committed_at:committed,payments:payments.map(paymentView)};
