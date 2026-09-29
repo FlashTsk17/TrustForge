@@ -101,4 +101,40 @@ describe("T12 official Stage 1 contract",()=>{
     const balances=await request(app).get("/me").set("Authorization","Bearer "+ada).expect(200);
     expect(balances.body.balance).toBe(9900);
   });
+  it("executes atomic net settlements and replays without a second effect",async()=>{
+    const app=createStage1App(); await request(app).post("/_test/reset").send({currency:"EUR",minor_units:2,users:[
+      {id:"u_ada",email:"ada@example.com",password:"correct horse",display_name:"Ada",handle:"ada",balance:1000},
+      {id:"u_bob",email:"bob@example.com",password:"correct horse",display_name:"Bob",handle:"bob",balance:500},
+      {id:"u_cy",email:"cy@example.com",password:"correct horse",display_name:"Cy",handle:"cy",balance:0}
+    ],payments:[],requests:[],settlement_operator_ids:["u_ada"]}).expect(204);
+    const ada=await login(app,"ada@example.com");
+    const first=await request(app).post("/settlements").set("Authorization","Bearer "+ada).set("Idempotency-Key","set-1")
+      .send({transfers:[{from_handle:"ada",to_handle:"bob",amount:600},{from_handle:"bob",to_handle:"cy",amount:200}]}).expect(201);
+    expect(first.body.payments).toHaveLength(2);
+    const replay=await request(app).post("/settlements").set("Authorization","Bearer "+ada).set("Idempotency-Key","set-1")
+      .send({transfers:[{from_handle:"ada",to_handle:"bob",amount:600},{from_handle:"bob",to_handle:"cy",amount:200}]}).expect(200);
+    expect(replay.body).toEqual(first.body);
+    await request(app).get("/me").set("Authorization","Bearer "+ada).expect(200).then(r=>expect(r.body.balance).toBe(400));
+  });
+
+  it("keeps failed settlement atomic and the key reusable",async()=>{
+    const app=createStage1App(); await request(app).post("/_test/reset").send({currency:"EUR",minor_units:2,users:[
+      {id:"u_ada",email:"ada@example.com",password:"correct horse",display_name:"Ada",handle:"ada",balance:100},
+      {id:"u_bob",email:"bob@example.com",password:"correct horse",display_name:"Bob",handle:"bob",balance:0}
+    ],payments:[],requests:[],settlement_operator_ids:["u_ada"]}).expect(204);
+    const ada=await login(app,"ada@example.com");
+    await request(app).post("/settlements").set("Authorization","Bearer "+ada).set("Idempotency-Key","bad-set").send({transfers:[{from_handle:"ada",to_handle:"bob",amount:200}]}).expect(409);
+    await request(app).get("/me").set("Authorization","Bearer "+ada).expect(200).then(r=>expect(r.body.balance).toBe(100));
+    await request(app).post("/settlements").set("Authorization","Bearer "+ada).set("Idempotency-Key","bad-set").send({transfers:[{from_handle:"ada",to_handle:"bob",amount:50}]}).expect(201);
+  });
+
+  it("enforces private activity visibility",async()=>{
+    const app=createStage1App(); await reset(app);
+    const ada=await login(app,"ada@example.com"), bob=await login(app,"bob@example.com");
+    await request(app).post("/payments").set("Authorization","Bearer "+ada).set("Idempotency-Key","private").send({to_handle:"bob",amount:100,visibility:"private"}).expect(201);
+    const cy=(await request(app).post("/auth/signup").send({email:"cy@example.com",password:"correct horse",display_name:"Cy"}).expect(201)).body.token;
+    await request(app).get("/activity").set("Authorization","Bearer "+cy).expect(200).then(r=>expect(r.body.payments).toHaveLength(0));
+    await request(app).get("/activity").set("Authorization","Bearer "+bob).expect(200).then(r=>expect(r.body.payments).toHaveLength(1));
+  });
+
 });
