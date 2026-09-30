@@ -84,6 +84,13 @@ Required final gate:
 - R6 is now supported by fresh independent runtime evidence from CI run #45.
 
 ## 9. Conclusion
-**Trust state: INTERNAL BASELINE VERIFIED; OFFICIAL STAGE 1 CONFORMANCE PENDING.**
+**Trust state: INTERNAL BASELINE VERIFIED; IMPLEMENTATION ALIGNED AND INDEPENDENTLY VALIDATED; OFFICIAL STAGE 1 CONFORMANCE PENDING
 
 The existing evidence establishes an independently verified baseline for the provisional adapter behavior. D01 and D04 are now resolved from the official specification, and T12 is the next build milestone to migrate the implementation and re-run verification against that contract.
+
+
+## T12 update — 2026-09-30
+
+T12 implementation now has a green CI validation on commit `73987cfaf85e92a57a35293006fd51d59452a2f5`: build, 12 official Stage 1 contract tests, and an independent HTTP verifier all pass. Evidence artifact digest: `sha256:575770d70f06ffb744a6f3ad74f6722302a346bdda7dc69c07831441496d540d`.
+
+This evidence validates the implementation and its HTTP behavior, but it does not replace the official Dark Factory isolated harness. Official Stage 1 conformance remains pending until that harness is executed successfully.
