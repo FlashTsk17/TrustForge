@@ -1,0 +1,45 @@
+name: Pocketful Official Isolated Harness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  isolated-pocketful:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout TrustForge
+        uses: actions/checkout@v4
+
+      - name: Checkout official Dark Factory harness
+        uses: actions/checkout@v4
+        with:
+          repository: band-ai/dark-factory-wearedevs
+          path: dark-factory-wearedevs
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install official harness
+        working-directory: dark-factory-wearedevs
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install -r harness/requirements.txt
+
+      - name: Run official Pocketful Stage 1 harness in isolated mode
+        working-directory: dark-factory-wearedevs
+        run: |
+          . .venv/bin/activate
+          python -m harness run             --track pocketful             --repo "$GITHUB_WORKSPACE"             --stage 1             --mode isolated             --out "$GITHUB_WORKSPACE/pocketful-official-check"
+
+      - name: Upload official harness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocketful-official-isolated-report
+          path: pocketful-official-check
+          if-no-files-found: warn
