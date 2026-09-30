@@ -52,7 +52,8 @@ const canonical = (value:unknown):string => {
 const errorBody = (code:string, message:string) => ({error:{code,message}});
 const malformed = (res:express.Response, code:string, message:string, status:number) => res.status(status).json(errorBody(code,message));
 const validId = (value:unknown) => typeof value === "string" && value.length <= 64 && value.length > 0;
-const validAmount = (value:unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= 1_000_000_000;\nconst validNote = (value:unknown) => typeof value === "string" && Array.from(value).length <= 200;
+const validAmount = (value:unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= 1_000_000_000;
+const validNote = (value:unknown) => typeof value === "string" && Array.from(value).length <= 200;
 const optionalNote = (body:any) => body.note === undefined ? "" : body.note;
 const visibility = (body:any) => body.visibility === undefined ? "public" : body.visibility;
 
