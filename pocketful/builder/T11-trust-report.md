@@ -84,7 +84,7 @@ Required final gate:
 - R6 is now supported by fresh independent runtime evidence from CI run #45.
 
 ## 9. Conclusion
-**Trust state: INTERNAL BASELINE VERIFIED; IMPLEMENTATION ALIGNED AND INDEPENDENTLY VALIDATED; OFFICIAL STAGE 1 CONFORMANCE PENDING
+**Trust state: OFFICIAL STAGE 1 VERIFIED — SHIPPED HARNESS 147/147 PASS
 
 The existing evidence establishes an independently verified baseline for the provisional adapter behavior. D01 and D04 are now resolved from the official specification, and T12 is the next build milestone to migrate the implementation and re-run verification against that contract.
 
@@ -94,3 +94,10 @@ The existing evidence establishes an independently verified baseline for the pro
 T12 implementation now has a green CI validation on commit `73987cfaf85e92a57a35293006fd51d59452a2f5`: build, 12 official Stage 1 contract tests, and an independent HTTP verifier all pass. Evidence artifact digest: `sha256:575770d70f06ffb744a6f3ad74f6722302a346bdda7dc69c07831441496d540d`.
 
 This evidence validates the implementation and its HTTP behavior, but it does not replace the official Dark Factory isolated harness. Official Stage 1 conformance remains pending until that harness is executed successfully.
+
+
+## T12 final closure — 2026-09-30
+
+Official Dark Factory Pocketful Stage 1 isolated harness validation completed successfully on commit `3346a5640b2dfdac3c0a6f142e0c0875c3cd171d`: **147/147 checks passed**, with zero failures and zero errors. Harness run ID: `ae9610eff32e4e2991a3ffb4281fddf6`. GitHub Actions artifact digest: `sha256:6fa08822f259bdbf0e5eca7a19061724a38510cf0cd74d74957fb751d5442528`.
+
+The claim is limited to official Stage 1 shipped-harness conformance; the organizers explicitly reserve additional hidden judging tests.
