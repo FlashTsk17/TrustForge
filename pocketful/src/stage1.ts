@@ -26,7 +26,7 @@ type State = {
   settlement_operator_ids:string[];
 };
 
-const now = () => new Date().toISOString();
+const now = () => new Date().toISOString().replace(/Z$/, "+00:00");
 const id = (prefix:string) => prefix + "_" + randomBytes(12).toString("hex");
 const hash = (value:string) => createHash("sha256").update(value).digest("hex");
 const token = () => randomBytes(32).toString("hex");
@@ -249,9 +249,9 @@ export function createStage1App(initial:State = fixtureState()) {
     if(check.kind==="replay") return reply(res,200,check.record!.body);
     if(check.kind==="reuse") return malformed(res,"idempotency_key_reuse","Key was used with a different request",409);
     const {to_handle,amount}=req.body??{}; const note=optionalNote(req.body); const vis=visibility(req.body);
-    if(typeof to_handle!=="string"||typeof amount!=="number"||typeof note!=="string"||typeof vis!=="string")
-      return malformed(res,"malformed_request","Invalid field type",400);
-    if(!validAmount(amount)||note.length>200||!["public","private"].includes(vis))
+    if(typeof to_handle!=="string") return malformed(res,"validation_failed","Invalid to_handle",422);
+    if(!validAmount(amount)||typeof amount!=="number"||typeof note!=="string"||typeof vis!=="string" ||
+       note.length>200||!["public","private"].includes(vis))
       return malformed(res,"validation_failed","Invalid payment",422);
     const to=findUser(to_handle); if(!to)return malformed(res,"not_found","Recipient not found",404);
     if(to.id===u.id)return malformed(res,"self_payment","Cannot pay yourself",422);
@@ -268,8 +268,8 @@ export function createStage1App(initial:State = fixtureState()) {
     if(check.kind==="replay")return reply(res,200,check.record!.body);
     if(check.kind==="reuse")return malformed(res,"idempotency_key_reuse","Key was used with a different request",409);
     const {payer_handle,amount}=req.body??{}; const note=optionalNote(req.body);
-    if(typeof payer_handle!=="string"||typeof amount!=="number"||typeof note!=="string")return malformed(res,"malformed_request","Invalid field type",400);
-    if(!validAmount(amount)||note.length>200)return malformed(res,"validation_failed","Invalid request",422);
+    if(typeof payer_handle!=="string")return malformed(res,"validation_failed","Invalid payer_handle",422);
+    if(!validAmount(amount)||typeof amount!=="number"||typeof note!=="string"||note.length>200)return malformed(res,"validation_failed","Invalid request",422);
     const payer=findUser(payer_handle); if(!payer)return malformed(res,"not_found","Payer not found",404);
     if(payer.id===u.id)return malformed(res,"self_request","Cannot request from yourself",422);
     const r:MoneyRequest={id:id("rq"),requester_id:u.id,payer_id:payer.id,amount,note,status:"pending",payment_id:null,created_at:now()};
@@ -284,8 +284,7 @@ export function createStage1App(initial:State = fixtureState()) {
     const r=state.requests.find(x=>x.id===req.params.id); if(!r)return malformed(res,"not_found","Request not found",404);
     if(r.payer_id!==u.id)return malformed(res,"forbidden","Only the payer may pay",403);
     const vis=visibility(req.body);
-    if(typeof vis!=="string")return malformed(res,"malformed_request","Invalid field type",400);
-    if(!["public","private"].includes(vis))return malformed(res,"validation_failed","Invalid visibility",422);
+    if(typeof vis!=="string"||!["public","private"].includes(vis))return malformed(res,"validation_failed","Invalid visibility",422);
     if(r.status!=="pending")return malformed(res,"request_not_pending","Request is not pending",409);
     if(u.balance<r.amount)return malformed(res,"insufficient_funds","Insufficient funds",409);
     const requester=state.users.find(x=>x.id===r.requester_id)!;
@@ -333,15 +332,13 @@ export function createStage1App(initial:State = fixtureState()) {
     if(check.kind==="replay")return reply(res,200,check.record!.body);
     if(check.kind==="reuse")return malformed(res,"idempotency_key_reuse","Key was used with a different request",409);
     const {amount,participant_handles}=req.body??{}; const note=optionalNote(req.body);
-    if(typeof amount!=="number"||!Array.isArray(participant_handles)||typeof note!=="string")
-      return malformed(res,"malformed_request","Invalid field type",400);
-    if(!validAmount(amount)||participant_handles.length===0||participant_handles.some((x:any)=>typeof x!=="string")||
+    if(!Array.isArray(participant_handles)) return malformed(res,"validation_failed","Invalid participant_handles",422);
+    if(!validAmount(amount)||typeof amount!=="number"||typeof note!=="string"||
+       participant_handles.length===0||participant_handles.some((x:any)=>typeof x!=="string")||
        new Set(participant_handles).size!==participant_handles.length||note.length>200)
       return malformed(res,"validation_failed","Invalid split",422);
     const participants=participant_handles.map((h:string)=>findUser(h));
     if(participants.some(x=>!x))return malformed(res,"not_found","Participant not found",404);
-    if(!participants.some(x=>x!.id===u.id)) participants.unshift(u);
-    else if(participants[0]?.id!==u.id) { /* caller position remains as supplied for share ordering */ }
     const originalHandles=participant_handles as string[];
     const n=originalHandles.length; const base=Math.floor(amount/n), extra=amount%n;
     const shares=originalHandles.map((handle:string,i:number)=>({handle,amount:base+(i<extra?1:0)}));
@@ -382,7 +379,7 @@ export function createStage1App(initial:State = fixtureState()) {
       const from=findUser(t.from_handle),to=findUser(t.to_handle); if(!from||!to)return malformed(res,"not_found","Handle not found",404);
       if(from.id===to.id)return malformed(res,"self_payment","Cannot transfer to yourself",422);
       const note=t.note===undefined?"":t.note, vis=t.visibility===undefined?"public":t.visibility;
-      if(typeof note!=="string"||note.length>200||!["public","private"].includes(vis))return malformed(res,"validation_failed","Invalid settlement entry",422);
+      if(typeof note!=="string"||note.length>200||typeof vis!=="string"||!["public","private"].includes(vis))return malformed(res,"validation_failed","Invalid settlement entry",422);
       planned.push({from,to,amount:t.amount,note,visibility:vis as any});
       deltas.set(from.id,(deltas.get(from.id)||0)-t.amount); deltas.set(to.id,(deltas.get(to.id)||0)+t.amount);
     }
