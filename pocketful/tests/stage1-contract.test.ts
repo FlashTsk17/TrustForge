@@ -137,4 +137,29 @@ describe("T12 official Stage 1 contract",()=>{
     await request(app).get("/activity").set("Authorization","Bearer "+bob).expect(200).then(r=>expect(r.body.payments).toHaveLength(1));
   });
 
+
+  it("matches required timestamp and dedicated validation semantics",async()=>{
+    const app=createStage1App(); await reset(app);
+    const ada=await login(app,"ada@example.com");
+    await request(app).post("/requests").set("Authorization","Bearer "+ada).set("Idempotency-Key","shape-1")
+      .send({payer_handle:"bob",amount:100,note:null}).expect(422);
+    await request(app).post("/payments").set("Authorization","Bearer "+ada).set("Idempotency-Key","shape-2")
+      .send({to_handle:"bob",amount:"100"}).expect(422);
+    const ok=await request(app).post("/payments").set("Authorization","Bearer "+ada).set("Idempotency-Key","shape-3")
+      .send({to_handle:"bob",amount:100}).expect(201);
+    expect(ok.body.created_at).toMatch(/^\\d{4}-\\d{2}-\\d{2}T.*[+-]\\d{2}:\\d{2}$/);
+  });
+
+  it("supports caller-omitted and caller-only splits",async()=>{
+    const app=createStage1App(); await reset(app);
+    const ada=await login(app,"ada@example.com");
+    const omitted=await request(app).post("/splits").set("Authorization","Bearer "+ada).set("Idempotency-Key","split-omitted")
+      .send({amount:5,participant_handles:["bob"]}).expect(201);
+    expect(omitted.body.shares).toEqual([{handle:"bob",amount:5}]);
+    expect(omitted.body.requests).toHaveLength(1);
+    const only=await request(app).post("/splits").set("Authorization","Bearer "+ada).set("Idempotency-Key","split-only")
+      .send({amount:1,participant_handles:["ada"]}).expect(201);
+    expect(only.body.shares).toEqual([{handle:"ada",amount:1}]);
+    expect(only.body.requests).toHaveLength(0);
+  });
 });
