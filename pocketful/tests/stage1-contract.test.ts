@@ -147,7 +147,7 @@ describe("T12 official Stage 1 contract",()=>{
       .send({to_handle:"bob",amount:"100"}).expect(422);
     const ok=await request(app).post("/payments").set("Authorization","Bearer "+ada).set("Idempotency-Key","shape-3")
       .send({to_handle:"bob",amount:100}).expect(201);
-    expect(ok.body.created_at).toMatch(/^\\d{4}-\\d{2}-\\d{2}T.*[+-]\\d{2}:\\d{2}$/);
+    expect(ok.body.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T.*[+-]\d{2}:\d{2}$/);
   });
 
   it("supports caller-omitted and caller-only splits",async()=>{
