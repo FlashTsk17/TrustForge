@@ -25,4 +25,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trustforge-runtime-evidence
-          path: pocketful/evidence/runtime-verification.json
+          path: pocketful/evidence/stage1-contract-verification.json
