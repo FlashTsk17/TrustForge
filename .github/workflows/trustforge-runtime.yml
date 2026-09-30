@@ -26,8 +26,6 @@ jobs:
     defaults:
       run:
         working-directory: pocketful
-    env:
-      DATABASE_URL: postgresql://trustforge:trustforge@localhost:5432/trustforge
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,7 +34,7 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: npm test
-      - name: Upload verifier evidence
+      - name: Upload existing verifier evidence
         uses: actions/upload-artifact@v4
         with:
           name: trustforge-runtime-evidence
