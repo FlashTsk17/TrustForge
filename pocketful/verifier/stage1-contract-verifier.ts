@@ -125,7 +125,7 @@ export async function runStage1ContractVerification() {
     const reqCreate = await request(app).post("/requests")
       .set("Authorization", `Bearer ${ada}`)
       .set("Idempotency-Key", "verifier-request")
-      .send({ payer_handle: "bob", amount: 5000 });
+      .send({ payer_handle: "bob", amount: 500 });
     assert(reqCreate.status === 201, "request creation failed");
     const reqPay = await request(app).post(`/requests/${reqCreate.body.request_id}/pay`)
       .set("Authorization", `Bearer ${bob}`)
