@@ -25,18 +25,18 @@ No seat may self-certify its own work.
 
 ## Seat topology
 
-The intended production band has six seats:
+The production band used for TrustForge has six seats:
 
 - Architect — specification, decomposition, risks and acceptance.
-- Builder — scoped implementation and validation.
+- Operator — coordinates bounded implementation work and routes complete handoffs to the appropriate execution seat.
 - Adversary — failure-oriented scenario generation.
 - Verifier — independent execution and verdicts.
 - Repairer — root-cause analysis and focused repair.
 - Evidence — provenance, evidence integrity and final report.
 
-At least three distinct coding-agent seats are required by the event. Six are recommended because the work naturally separates into independent responsibilities.
+At least three distinct coding-agent seats are required by the event. Six are used because the work naturally separates into independent responsibilities.
 
-Each seat must have its own Band Desktop identity, a mandate file, and recorded harness and model.
+Each seat has its own Band Desktop identity, a mandate file, and a recorded harness and model.
 
 ## Handoff protocol
 
@@ -68,7 +68,7 @@ The factory never converts INCONCLUSIVE or BLOCKED into PASS.
 
 ## Independence rule
 
-Builder output is evidence for the Verifier, not a verdict.
+Implementation output is evidence for the Verifier, not a verdict.
 
 The Verifier should inspect and execute through the observable product surface whenever possible. Source inspection alone cannot establish runtime correctness.
 
@@ -107,7 +107,7 @@ Do not rewrite or squash collaboration history.
 
 A production room provides each seat the same absolute result-repository path and the specification for the current stage.
 
-The coordinator dispatches one stage at a time, preserves the previous stage as the baseline for the next, and requires a committed revision before accepting a handoff.
+The Operator dispatches one stage at a time, preserves the previous stage as the baseline for the next, and requires a committed revision before accepting a handoff.
 
 ## Cost and timing log
 
