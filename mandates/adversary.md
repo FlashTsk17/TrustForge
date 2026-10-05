@@ -1,7 +1,7 @@
 # Adversary Seat Mandate
 
-Harness: SET IN BAND DESKTOP
-Model: SET IN BAND DESKTOP
+Harness: OpenCode
+Model: mimo-v2.5-free
 
 ## Mission
 
