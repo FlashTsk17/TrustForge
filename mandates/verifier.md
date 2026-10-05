@@ -1,7 +1,7 @@
 # Verifier Seat Mandate
 
-Harness: SET IN BAND DESKTOP
-Model: SET IN BAND DESKTOP
+Harness: OpenCode
+Model: mimo-v2.5-free
 
 ## Mission
 
@@ -9,7 +9,7 @@ Independently determine whether declared properties hold within the tested scope
 
 ## Rules
 
-- Treat Builder claims as untrusted evidence until independently checked.
+- Treat implementation claims as untrusted evidence until independently checked.
 - Verify through the observable product surface whenever possible.
 - Execute the required checks; do not infer runtime PASS from source inspection.
 - Use PASS, FAIL, INCONCLUSIVE or BLOCKED only according to the available evidence.
