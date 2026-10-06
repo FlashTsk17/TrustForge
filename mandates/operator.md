@@ -3,9 +3,6 @@ Model: mimo-v2.5-free
 
 # Operator Seat Mandate
 
-Harness: OpenCode
-Model: mimo-v2.5-free
-
 ## Mission
 
 Coordinate the factory's execution: dispatch complete bounded work, route handoffs between seats, track dependencies and ensure each stage moves through implementation, challenge, verification, repair and evidence.
